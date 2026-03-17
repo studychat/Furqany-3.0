@@ -362,7 +362,9 @@ const App: React.FC = () => {
           </button>
           <div className="flex flex-col">
             <h2 className="text-xl font-black text-rose-700 leading-tight">Furqany</h2>
-            <p className="text-[10px] font-black text-rose-400 uppercase tracking-tighter -mt-1">{t('salut')}, {progress.userName || 'Ami'} ! ✨</p>
+            <p className="text-xs font-bold text-rose-500 uppercase tracking-tight -mt-0.5">
+              {t('salut')}, <span className="text-rose-700 font-black">{progress.userName || 'Champion'}</span> ! ✨
+            </p>
           </div>
           <div className="ms-auto flex items-center gap-2">
             <LanguageSwitcher />
@@ -482,10 +484,10 @@ const App: React.FC = () => {
             <div className="space-y-6">
               <PrayerTimes />
               {[
-                { id: 1, name: "1er Quart : Fatiha à Al-An'am", range: [1, 6], icon: "🌱" },
-                { id: 2, name: "2ème Quart : Al-A'raf à Al-Isra", range: [7, 17], icon: "🌳" },
-                { id: 3, name: "3ème Quart : Al-Kahf à Fatir", range: [18, 35], icon: "🏞️" },
-                { id: 4, name: "4ème Quart : Nas à Yasin", range: [36, 114], icon: "🏰", inverted: true },
+                { id: 1, name: "1er Quart : Fatiha à Al-An'am", range: [1, 6] },
+                { id: 2, name: "2ème Quart : Al-A'raf à Al-Isra", range: [7, 17] },
+                { id: 3, name: "3ème Quart : Al-Kahf à Fatir", range: [18, 35] },
+                { id: 4, name: "4ème Quart : Nas à Yasin", range: [36, 114], inverted: true },
               ].map(quarter => {
                 let surahsInQuarter = SHORT_SURAHS.filter(s => s.id >= quarter.range[0] && s.id <= quarter.range[1]);
                 
@@ -505,22 +507,38 @@ const App: React.FC = () => {
                   <div key={quarter.id} className="space-y-4">
                     <button 
                       onClick={() => handleQuarterClick(quarter.id)}
-                      className={`w-full flex items-center justify-between p-5 rounded-[2rem] transition-all shadow-sm border-2 ${
+                      className={`w-full flex items-center justify-between p-4 rounded-[2.2rem] transition-all shadow-md border-2 ${
                         isExpanded 
-                          ? (progress.theme === 'rose' ? 'bg-rose-50/80 border-rose-200/50' : 'bg-emerald-50/80 border-emerald-200/50') 
-                          : 'bg-white/60 backdrop-blur-sm border-white/50'
+                          ? (progress.theme === 'rose' ? 'bg-rose-50/90 border-rose-200/50 scale-[1.02]' : 'bg-emerald-50/90 border-emerald-200/50 scale-[1.02]') 
+                          : 'bg-white/70 backdrop-blur-md border-white/60 hover:bg-white/80'
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <span className="text-3xl">{quarter.icon}</span>
+                        <div className={`w-16 h-16 rounded-2xl overflow-hidden shadow-inner border-2 ${isUnlocked ? 'border-white/80' : 'border-gray-200 grayscale'} bg-white/40`}>
+                          <img 
+                            src={`/${quarter.id}.png`} 
+                            alt={quarter.name} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback if image fails to load
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=' + quarter.id;
+                            }}
+                          />
+                        </div>
                         <div className="text-left">
-                          <h3 className={`text-lg font-black ${progress.theme === 'rose' ? 'text-rose-800' : 'text-emerald-800'}`}>
+                          <h3 className={`text-md font-black leading-tight ${progress.theme === 'rose' ? 'text-rose-900' : 'text-emerald-900'}`}>
                             {quarter.name}
                           </h3>
-                          {!isUnlocked && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">🔒 Bloqué par les parents</p>}
+                          {!isUnlocked ? (
+                            <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 italic">🔒 Bloqué par les parents</p>
+                          ) : (
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{surahsInQuarter.length} Sourates</p>
+                          )}
                         </div>
                       </div>
-                      <span className="text-2xl opacity-30">{isExpanded ? '🔼' : '🔽'}</span>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${isExpanded ? 'rotate-180 bg-rose-100 text-rose-600' : 'bg-gray-100/50 text-gray-400'}`}>
+                        <span className="text-sm">⌄</span>
+                      </div>
                     </button>
 
                     {isExpanded && (
