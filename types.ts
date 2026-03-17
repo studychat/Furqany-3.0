@@ -30,6 +30,8 @@ export interface UserProgress {
   gameStars: number;
   userName?: string;
   userAge?: number;
+  gender?: 'boy' | 'girl';
+  isPremium?: boolean;
 }
 
 export enum AppMode {

@@ -58,6 +58,8 @@ const App: React.FC = () => {
   const [parentInput, setParentInput] = useState('');
   const [celebrationData, setCelebrationData] = useState({ compliment: '', badge: null as any });
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showEncouragement, setShowEncouragement] = useState(false);
+  const [encouragementText, setEncouragementText] = useState("");
   const [showReciterPicker, setShowReciterPicker] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showManual, setShowManual] = useState(false);
@@ -88,15 +90,30 @@ const App: React.FC = () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
-            const data = userDoc.data() as UserProgress & { isPremium?: boolean };
+            const data = userDoc.data() as UserProgress;
             setProgress(data);
             setIsPremium(data.isPremium || false);
-            if (!data.userName || !data.userAge) {
+            
+            // Sync with local cache
+            if (data.userName) localStorage.setItem('furqany_userName', data.userName);
+            if (data.gender) localStorage.setItem('furqany_gender', data.gender);
+
+            if (!data.userName || !data.gender) {
               setShowProfileSetup(true);
             }
           } else {
-            await setDoc(doc(db, 'users', currentUser.uid), progress);
-            setShowProfileSetup(true);
+            // Check local cache if Firebase is empty
+            const cachedName = localStorage.getItem('furqany_userName');
+            const cachedGender = localStorage.getItem('furqany_gender') as any;
+            
+            if (cachedName && cachedGender) {
+              const newProgress = { ...progress, userName: cachedName, gender: cachedGender };
+              setProgress(newProgress);
+              await setDoc(doc(db, 'users', currentUser.uid), newProgress);
+            } else {
+              await setDoc(doc(db, 'users', currentUser.uid), progress);
+              setShowProfileSetup(true);
+            }
           }
         } catch (error) {
           console.error("Error fetching/setting user doc:", error);
@@ -160,6 +177,17 @@ const App: React.FC = () => {
           completedVerses: [...prev.completedVerses, verseKey]
         }));
       }
+      
+      const encouragements = [
+        "MachaAllah ! C'est magnifique ! ❤️",
+        "Bravo ! Tu es sur le bon chemin ! 🌟",
+        "SubhanAllah ! Quelle belle récitation ! ✨",
+        "Super ! Allah t'aime et t'aide ! 💖",
+        "Génial ! Tu progresses super bien ! 🚀"
+      ];
+      setEncouragementText(encouragements[Math.floor(Math.random() * encouragements.length)]);
+      setShowEncouragement(true);
+      setTimeout(() => setShowEncouragement(false), 3000);
     }
     initiateParentalValidation();
   };
@@ -173,7 +201,7 @@ const App: React.FC = () => {
     setShowParentalValidation(false);
     if (!selectedSurah) return;
     
-    const compliment = await generateCompliment(selectedSurah.name, isPremium);
+    const compliment = await generateCompliment(selectedSurah.name, isPremium, progress.userName, progress.gender);
     let newBadge = null;
 
     if (selectedSurah.id === 1 && !progress.badges.includes('cle_tresor')) newBadge = BADGES_LIST.find(b => b.id === 'cle_tresor');
@@ -256,12 +284,21 @@ const App: React.FC = () => {
     return (
       <div className={`h-[100dvh] ${themeClasses[progress.theme]} flex items-center justify-center p-6 select-none`}>
         <div className="max-w-md w-full bg-white/80 backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl border-4 border-white/50 text-center flex flex-col items-center gap-5">
+          <p className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-1">Dès 4 ans</p>
           <h1 className="text-3xl font-black text-rose-700">Bienvenue sur Furqany</h1>
           <button onClick={() => {
-            console.log("Attempting sign in...");
+            console.log("Attempting sign in from origin:", window.location.origin);
             signInWithPopup(auth, googleProvider).catch(err => {
-              console.error("Sign in error:", err);
-              setErrorMsg("Erreur de connexion : " + err.message);
+              console.error("Sign in error details:", err);
+              if (err.code === 'auth/unauthorized-domain') {
+                 alert("ERREUR CHROME : Firebase ne reconnaît pas ce domaine.\n\n" +
+                       "Causes possibles :\n" +
+                       "1. Les 'Cookies tiers' sont bloqués dans Chrome (vérifiez Paramètres > Confidentialité).\n" +
+                       "2. L'extension AdBlock modifie l'envoi du domaine.\n" +
+                       "3. Le domaine " + window.location.hostname + " n'est pas dans la console Firebase (Authentication > Settings).");
+              } else {
+                 setErrorMsg("Erreur de connexion : " + err.message);
+              }
             });
           }} className={`w-full py-5 ${buttonClasses[progress.theme]} text-white text-xl font-black rounded-full shadow-lg active:scale-95 transition-transform`}>
             Connexion avec Google 🔑
@@ -277,6 +314,7 @@ const App: React.FC = () => {
         <div className="max-w-md w-full bg-white/80 backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl border-4 border-white/50 text-center flex flex-col items-center gap-5 relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-200/30 rounded-full blur-2xl"></div>
           <div className="text-6xl animate-bounce">🎁</div>
+          <p className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-1">Dès 4 ans</p>
           <h1 className="text-3xl font-black text-rose-700 leading-tight">Bienvenue sur FURQANY !</h1>
           <div className="bg-amber-50/80 p-6 rounded-[2rem] border border-amber-100/50 leading-relaxed shadow-inner text-left">
              <p className="text-md font-bold text-amber-900 italic mb-2">"Bienvenue dans ton voyage coranique,"</p>
@@ -294,6 +332,14 @@ const App: React.FC = () => {
 
   return (
     <div className={`h-[100dvh] ${themeClasses[progress.theme]} font-sans transition-colors duration-700 flex flex-col select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
+      {showEncouragement && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 duration-500">
+          <div className="bg-white/90 backdrop-blur-md px-8 py-4 rounded-3xl shadow-2xl border-4 border-rose-100 flex items-center gap-3">
+            <span className="text-2xl">✨</span>
+            <p className="text-rose-700 font-black text-lg whitespace-nowrap">{encouragementText}</p>
+          </div>
+        </div>
+      )}
       <header className="px-4 py-3 flex justify-between items-center z-40 bg-white/40 backdrop-blur-md border-b border-white/20">
         <div className="relative flex items-center gap-3 w-full">
           <button 
@@ -302,6 +348,14 @@ const App: React.FC = () => {
           >
             ☰
           </button>
+          <div className="flex flex-col">
+            <span className="font-black text-xl text-slate-800 leading-tight">Furqany</span>
+            {progress.userName && (
+              <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none">
+                Salut, {progress.userName} !
+              </span>
+            )}
+          </div>
           {user && (
             <button 
               onClick={() => signOut(auth)} 
@@ -311,7 +365,14 @@ const App: React.FC = () => {
               🚪
             </button>
           )}
-          <span className="font-black text-xl text-slate-800">Furqany</span>
+          <div className="flex flex-col">
+            <span className="font-black text-xl text-slate-800 leading-tight">Furqany</span>
+            {progress.userName && (
+              <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none">
+                Salut, {progress.userName} !
+              </span>
+            )}
+          </div>
           {showMenu && (
             <div className="absolute top-full left-0 mt-2 bg-white/80 backdrop-blur-xl p-4 rounded-[2rem] shadow-2xl z-50 border-4 border-white/50 animate-in slide-in-from-top-4 flex flex-col gap-3">
               <button onClick={() => { setMode(AppMode.SELECTION); setShowMenu(false); }} className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl border border-white/50" title="Accueil">🏠</button>
@@ -581,7 +642,7 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            <Mascot verse={selectedSurah.verses[currentVerseIndex]} surahName={selectedSurah.name} theme={progress.theme} userName={progress.userName} isPremium={isPremium} />
+            <Mascot verse={selectedSurah.verses[currentVerseIndex]} surahName={selectedSurah.name} theme={progress.theme} userName={progress.userName} gender={progress.gender} isPremium={isPremium} />
           </div>
         ) : null}
       </main>
@@ -673,25 +734,66 @@ const App: React.FC = () => {
       )}
 
       {showProfileSetup && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-blue-900/40 backdrop-blur-md p-4">
-          <div className="bg-white/80 backdrop-blur-md w-full max-w-xs p-8 rounded-[3rem] shadow-2xl text-center space-y-6 animate-in zoom-in duration-300">
-            <h3 className="text-xl font-black text-blue-900">Bienvenue !</h3>
-            <p className="text-sm font-bold text-blue-600/70">Comment t'appelles-tu et quel âge as-tu ?</p>
-            <input 
-              type="text" 
-              placeholder="Ton prénom"
-              value={progress.userName || ''}
-              onChange={(e) => setProgress(prev => ({ ...prev, userName: e.target.value }))}
-              className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl text-center text-lg font-bold focus:outline-none focus:border-blue-300"
-            />
-            <input 
-              type="number" 
-              placeholder="Ton âge"
-              value={progress.userAge || ''}
-              onChange={(e) => setProgress(prev => ({ ...prev, userAge: parseInt(e.target.value) }))}
-              className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl text-center text-lg font-bold focus:outline-none focus:border-blue-300"
-            />
-            <button onClick={() => setShowProfileSetup(false)} className="w-full py-3 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200">Enregistrer</button>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-rose-900/40 backdrop-blur-md p-4">
+          <div className="bg-white/90 backdrop-blur-xl w-full max-w-sm p-8 rounded-[3.5rem] shadow-2xl text-center space-y-8 animate-in zoom-in duration-500 border-8 border-white">
+            {!progress.gender ? (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-4xl">🌸</div>
+                <h3 className="text-2xl font-black text-rose-900">Bienvenue !</h3>
+                <p className="text-lg font-bold text-rose-600/70">Es-tu une fille ou un garçon ?</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => setProgress(p => ({ ...p, gender: 'girl' }))}
+                    className="p-6 bg-pink-50 border-4 border-pink-100 rounded-[2rem] text-4xl hover:scale-105 active:scale-95 transition-all shadow-sm"
+                  >
+                    🌸
+                    <p className="text-xs font-black text-pink-500 mt-2 uppercase">Fille</p>
+                  </button>
+                  <button 
+                    onClick={() => setProgress(p => ({ ...p, gender: 'boy' }))}
+                    className="p-6 bg-blue-50 border-4 border-blue-100 rounded-[2rem] text-4xl hover:scale-105 active:scale-95 transition-all shadow-sm"
+                  >
+                    🚀
+                    <p className="text-xs font-black text-blue-500 mt-2 uppercase">Garçon</p>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-4xl">
+                  {progress.gender === 'girl' ? '💖' : '🌟'}
+                </div>
+                <h3 className="text-2xl font-black text-rose-900">Super !</h3>
+                <p className="text-lg font-bold text-rose-600/70">Comment t'appelles-tu ?</p>
+                <input 
+                  type="text" 
+                  placeholder="Ton prénom..."
+                  autoFocus
+                  value={progress.userName || ''}
+                  onChange={(e) => setProgress(prev => ({ ...prev, userName: e.target.value }))}
+                  className="w-full p-5 bg-white border-4 border-rose-100 rounded-3xl text-center text-xl font-black focus:outline-none focus:border-rose-400 placeholder:text-rose-200 shadow-inner"
+                />
+                <button 
+                  disabled={!progress.userName}
+                  onClick={() => {
+                    if (progress.userName) {
+                      localStorage.setItem('furqany_userName', progress.userName);
+                      localStorage.setItem('furqany_gender', progress.gender!);
+                      setShowProfileSetup(false);
+                    }
+                  }} 
+                  className="w-full py-5 bg-rose-600 text-white rounded-3xl text-xl font-black shadow-lg shadow-rose-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                >
+                  C'est parti ! ✨
+                </button>
+                <button 
+                  onClick={() => setProgress(p => ({ ...p, gender: undefined }))}
+                  className="text-xs font-bold text-rose-400 uppercase tracking-widest"
+                >
+                  ⬅ Retour
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
