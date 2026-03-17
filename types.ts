@@ -32,6 +32,7 @@ export interface UserProgress {
   userAge?: number;
   gender?: 'boy' | 'girl';
   isPremium?: boolean;
+  preferredLanguage?: 'fr' | 'ar' | 'en';
 }
 
 export enum AppMode {

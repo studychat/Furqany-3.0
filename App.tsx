@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n';
 import { SHORT_SURAHS, BADGES_LIST } from './constants';
 import { UserProgress, AppMode, AppTheme, Surah } from './types';
 import { Mascot } from './components/Mascot';
@@ -11,10 +13,12 @@ import { generateCompliment } from './geminiService';
 import { auth, db, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
 
 const PARENTAL_CODE = "70000";
 
 const App: React.FC = () => {
+  const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -94,12 +98,11 @@ const App: React.FC = () => {
             setProgress(data);
             setIsPremium(data.isPremium || false);
             
-            // Sync with local cache
+            // Sync with local cache and i18n
             if (data.userName) localStorage.setItem('furqany_userName', data.userName);
             if (data.gender) localStorage.setItem('furqany_gender', data.gender);
-
-            if (!data.userName || !data.gender) {
-              setShowProfileSetup(true);
+            if (data.preferredLanguage) {
+              i18n.changeLanguage(data.preferredLanguage);
             }
           } else {
             // Check local cache if Firebase is empty
@@ -115,9 +118,9 @@ const App: React.FC = () => {
               setShowProfileSetup(true);
             }
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error fetching/setting user doc:", error);
-          setErrorMsg("Erreur lors de la récupération de vos données.");
+          setErrorMsg(`${t('error_data')} (${error?.code || 'inconnue'}).`);
         }
       }
     });
@@ -282,10 +285,13 @@ const App: React.FC = () => {
   if (!isAuthReady) return <div className="h-[100dvh] flex items-center justify-center">Chargement...</div>;
   if (!user) {
     return (
-      <div className={`h-[100dvh] ${themeClasses[progress.theme]} flex items-center justify-center p-6 select-none`}>
+      <div className={`h-[100dvh] ${themeClasses[progress.theme]} flex items-center justify-center p-6 select-none relative`}>
+        <div className="absolute top-8 right-8 z-50">
+          <LanguageSwitcher />
+        </div>
         <div className="max-w-md w-full bg-white/80 backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl border-4 border-white/50 text-center flex flex-col items-center gap-5">
           <p className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-1">Dès 4 ans</p>
-          <h1 className="text-3xl font-black text-rose-700">Bienvenue sur Furqany</h1>
+          <h1 className="text-3xl font-black text-rose-700">{t('welcome_title')}</h1>
           <button onClick={() => {
             console.log("Attempting sign in from origin:", window.location.origin);
             signInWithPopup(auth, googleProvider).catch(err => {
@@ -297,11 +303,11 @@ const App: React.FC = () => {
                        "2. L'extension AdBlock modifie l'envoi du domaine.\n" +
                        "3. Le domaine " + window.location.hostname + " n'est pas dans la console Firebase (Authentication > Settings).");
               } else {
-                 setErrorMsg("Erreur de connexion : " + err.message);
+                 setErrorMsg(`${t('error_data')} : ` + err.message);
               }
             });
           }} className={`w-full py-5 ${buttonClasses[progress.theme]} text-white text-xl font-black rounded-full shadow-lg active:scale-95 transition-transform`}>
-            Connexion avec Google 🔑
+            {t('login_google')}
           </button>
         </div>
       </div>
@@ -310,20 +316,23 @@ const App: React.FC = () => {
 
   if (!isWelcomeSeen) {
     return (
-      <div className={`h-[100dvh] ${themeClasses[progress.theme]} flex items-center justify-center p-6 select-none`}>
+      <div className={`h-[100dvh] ${themeClasses[progress.theme]} flex items-center justify-center p-6 select-none relative`}>
+        <div className="absolute top-8 right-8 z-50">
+          <LanguageSwitcher />
+        </div>
         <div className="max-w-md w-full bg-white/80 backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl border-4 border-white/50 text-center flex flex-col items-center gap-5 relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-200/30 rounded-full blur-2xl"></div>
           <div className="text-6xl animate-bounce">🎁</div>
           <p className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-1">Dès 4 ans</p>
-          <h1 className="text-3xl font-black text-rose-700 leading-tight">Bienvenue sur FURQANY !</h1>
+          <h1 className="text-3xl font-black text-rose-700 leading-tight">{t('welcome_title')}</h1>
           <div className="bg-amber-50/80 p-6 rounded-[2rem] border border-amber-100/50 leading-relaxed shadow-inner text-left">
-             <p className="text-md font-bold text-amber-900 italic mb-2">"Bienvenue dans ton voyage coranique,"</p>
+             <p className="text-md font-bold text-amber-900 italic mb-2">"{t('salut')} !"</p>
              <p className="text-base text-amber-800 font-medium">
-               J'ai créé ce petit jardin de lumière spécialement pour toi. Que chaque verset illumine ton cœur et guide tes pas.
+               {t('welcome_desc')}
              </p>
           </div>
           <button onClick={handleStartApp} className={`w-full py-5 ${buttonClasses[progress.theme]} text-white text-xl font-black rounded-full shadow-lg active:scale-95 transition-transform`}>
-            Ouvrir mon cadeau ! 🚀
+            {t('open_gift')}
           </button>
         </div>
       </div>
@@ -331,7 +340,10 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`h-[100dvh] ${themeClasses[progress.theme]} font-sans transition-colors duration-700 flex flex-col select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
+    <div 
+      dir={i18n.dir()}
+      className={`h-[100dvh] ${themeClasses[progress.theme]} font-sans transition-colors duration-700 flex flex-col select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${i18n.language === 'ar' ? 'rtl-layout' : ''}`}
+    >
       {showEncouragement && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 duration-500">
           <div className="bg-white/90 backdrop-blur-md px-8 py-4 rounded-3xl shadow-2xl border-4 border-rose-100 flex items-center gap-3">
@@ -340,7 +352,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-      <header className="px-4 py-3 flex justify-between items-center z-40 bg-white/40 backdrop-blur-md border-b border-white/20">
+      <header className="px-4 py-2 flex justify-between items-center z-40 bg-white/40 backdrop-blur-md border-b border-white/20">
         <div className="relative flex items-center gap-3 w-full">
           <button 
             onClick={() => setShowMenu(!showMenu)} 
@@ -349,80 +361,63 @@ const App: React.FC = () => {
             ☰
           </button>
           <div className="flex flex-col">
-            <span className="font-black text-xl text-slate-800 leading-tight">Furqany</span>
-            {progress.userName && (
-              <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none">
-                Salut, {progress.userName} !
-              </span>
-            )}
+            <h2 className="text-xl font-black text-rose-700 leading-tight">Furqany</h2>
+            <p className="text-[10px] font-black text-rose-400 uppercase tracking-tighter -mt-1">{t('salut')}, {progress.userName || 'Ami'} ! ✨</p>
           </div>
-          {user && (
-            <button 
-              onClick={() => signOut(auth)} 
-              className="w-10 h-10 bg-red-100/80 text-red-600 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl" 
-              title="Déconnexion"
-            >
-              🚪
-            </button>
-          )}
-          <div className="flex flex-col">
-            <span className="font-black text-xl text-slate-800 leading-tight">Furqany</span>
-            {progress.userName && (
-              <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none">
-                Salut, {progress.userName} !
-              </span>
+          <div className="ms-auto flex items-center gap-2">
+            <LanguageSwitcher />
+            {user && (
+              <button 
+                onClick={() => signOut(auth)} 
+                className="w-10 h-10 bg-red-100/80 text-red-600 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl" 
+                title={t('menu.logout')}
+              >
+                🚪
+              </button>
             )}
-          </div>
-          {showMenu && (
-            <div className="absolute top-full left-0 mt-2 bg-white/80 backdrop-blur-xl p-4 rounded-[2rem] shadow-2xl z-50 border-4 border-white/50 animate-in slide-in-from-top-4 flex flex-col gap-3">
-              <button onClick={() => { setMode(AppMode.SELECTION); setShowMenu(false); }} className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl border border-white/50" title="Accueil">🏠</button>
-              <button onClick={() => { setShowNotice(true); setShowMenu(false); }} className="w-10 h-10 bg-blue-100/80 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold shadow-sm active:scale-90">ℹ️</button>
-              <button onClick={() => { tryOpenGames(); setShowMenu(false); }} className="w-10 h-10 bg-yellow-400/80 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl">🎮</button>
-              <button onClick={() => { setMode(mode === AppMode.BADGES ? AppMode.SELECTION : AppMode.BADGES); setShowMenu(false); }} className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl border border-white/50">🏆</button>
-              <button onClick={() => { setShowThemePicker(!showThemePicker); setShowMenu(false); }} className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl border border-white/50">🎨</button>
-              <button onClick={() => { setShowManual(true); setShowMenu(false); }} className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl border border-white/50" title="Mode d'emploi">📖</button>
-              <button onClick={() => { setShowReciterPicker(!showReciterPicker); setShowMenu(false); }} className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl border border-white/50">🎙️</button>
-              <button onClick={() => { exportProgress(); setShowMenu(false); }} className="w-10 h-10 bg-green-100/80 text-green-600 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl" title="Exporter">💾</button>
-              <button onClick={() => { signOut(auth); setShowMenu(false); }} className="w-10 h-10 bg-red-100/80 text-red-600 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-transform text-xl" title="Déconnexion">🚪</button>
-              <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover shadow-sm" />
-            </div>
-          )}
-          <div className="flex items-center gap-2 bg-white/50 px-3 py-1 rounded-full font-black text-amber-600 shadow-sm ml-auto">
-            <span>⭐</span>
-            <span>{progress.gameStars || 0}</span>
           </div>
         </div>
 
-        {showThemePicker && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowThemePicker(false)} />
-            <div className="absolute top-full left-4 right-4 mt-2 bg-white/80 backdrop-blur-xl p-4 rounded-[2rem] shadow-2xl z-50 border-4 border-white/50 animate-in slide-in-from-top-4">
-              <div className="grid grid-cols-2 gap-2">
-                {['emerald', 'gold', 'indigo', 'rose'].map(tid => (
-                  <button key={tid} onClick={() => { setProgress(p => ({...p, theme: tid as any})); }} className={`p-3 rounded-xl border-2 text-sm font-bold ${progress.theme === tid ? 'border-rose-500 bg-rose-50' : 'border-white/50'}`}>
-                    {tid === 'emerald' && '🌿 Forêt'}
-                    {tid === 'gold' && '✨ Palais'}
-                    {tid === 'indigo' && '🌌 Ciel'}
-                    {tid === 'rose' && '🌸 Jardin'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+        {showMenu && (
+          <div className="absolute top-full left-4 right-4 mt-2 bg-white/80 backdrop-blur-xl p-4 rounded-[2.5rem] shadow-2xl z-50 border-4 border-white/50 animate-in slide-in-from-top-4 flex flex-col gap-2">
+             <button 
+              onClick={() => { setMode(AppMode.SELECTION); setShowMenu(false); }}
+              className={`w-full p-4 flex items-center rounded-2xl transition-colors ${mode === AppMode.SELECTION ? 'bg-rose-50 text-rose-600' : 'hover:bg-gray-50'}`}
+            >
+              <span className="text-2xl mr-3">🏠</span>
+              <span className="font-bold">{t('menu.home')}</span>
+            </button>
+            
+            <button 
+              onClick={() => { setMode(AppMode.COMPLETED_LIST); setShowMenu(false); }}
+              className={`w-full p-4 flex items-center rounded-2xl transition-colors ${mode === AppMode.COMPLETED_LIST ? 'bg-rose-50 text-rose-600' : 'hover:bg-gray-50'}`}
+            >
+              <span className="text-2xl mr-3">📚</span>
+              <span className="font-bold">{t('menu.completed')}</span>
+            </button>
+            
+            <button 
+              onClick={() => { setMode(AppMode.GAMES); setShowMenu(false); }}
+              className={`w-full p-4 flex items-center rounded-2xl transition-colors ${mode === AppMode.GAMES ? 'bg-rose-50 text-rose-600' : 'hover:bg-gray-50'}`}
+            >
+              <span className="text-2xl mr-3">🎮</span>
+              <span className="font-bold">{t('menu.games')}</span>
+            </button>
 
-        {showReciterPicker && (
-          <div className="absolute top-full left-4 right-4 mt-2 bg-white/80 backdrop-blur-xl p-4 rounded-[2rem] shadow-2xl z-50 border-4 border-white/50 animate-in slide-in-from-top-4">
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: 'hossary', name: 'Al-Hossary' },
-                { id: 'albanna', name: 'Al-Banna' }
-              ].map(reciter => (
-                <button key={reciter.id} onClick={() => { setProgress(p => ({...p, reciter: reciter.id as any})); setShowReciterPicker(false); }} className={`p-3 rounded-xl border-2 text-sm font-bold ${progress.reciter === reciter.id ? 'border-rose-500 bg-rose-50' : 'border-white/50'}`}>
-                  {reciter.name}
-                </button>
-              ))}
-            </div>
+            <button 
+              onClick={() => { setMode(AppMode.BADGES); setShowMenu(false); }}
+              className={`w-full p-4 flex items-center rounded-2xl transition-colors ${mode === AppMode.BADGES ? 'bg-rose-50 text-rose-600' : 'hover:bg-gray-50'}`}
+            >
+              <span className="text-2xl mr-3">🏅</span>
+              <span className="font-bold">{t('menu.badges')}</span>
+            </button>
+            
+            <div className="h-px bg-gray-100 my-2" />
+            
+            <button onClick={() => { setShowNotice(true); setShowMenu(false); }} className="w-full p-3 flex items-center text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl">ℹ️ Guide Parents</button>
+            <button onClick={() => { setShowThemePicker(true); setShowMenu(false); }} className="w-full p-3 flex items-center text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl">🎨 Thèmes</button>
+            <button onClick={() => { setShowReciterPicker(true); setShowMenu(false); }} className="w-full p-3 flex items-center text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl">🎙️ Récitateurs</button>
+            <button onClick={() => { exportProgress(); setShowMenu(false); }} className="w-full p-3 flex items-center text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl">💾 Sauvegarder</button>
           </div>
         )}
       </header>
@@ -448,7 +443,7 @@ const App: React.FC = () => {
               >
                 <span className="text-2xl mb-1">📖</span>
                 <span className={`text-lg font-black ${filterMode === 'completed' ? 'text-white' : 'text-emerald-700'}`}>{progress.completedSurahs.length}</span>
-                <span className={`text-[10px] font-bold ${filterMode === 'completed' ? 'text-emerald-100' : 'text-gray-400'} uppercase`}>Apprises</span>
+                <span className={`text-[10px] font-bold ${filterMode === 'completed' ? 'text-emerald-100' : 'text-gray-400'} uppercase`}>{t('learned')}</span>
               </button>
               <button 
                 onClick={() => setShowNotice(true)}
@@ -456,7 +451,7 @@ const App: React.FC = () => {
               >
                 <span className="text-2xl mb-1">🔥</span>
                 <span className="text-lg font-black text-orange-600">{progress.streak}</span>
-                <span className="text-[10px] font-bold text-gray-400 uppercase">Jours</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">{t('days')}</span>
               </button>
             </div>
 
@@ -636,9 +631,18 @@ const App: React.FC = () => {
             />
 
             <div className="flex gap-3">
-              <button onClick={() => setCurrentVerseIndex(v => v - 1)} disabled={currentVerseIndex === 0} className={`flex-1 py-4 rounded-2xl font-black text-lg transition-all ${currentVerseIndex === 0 ? 'bg-gray-200 text-gray-400' : 'bg-white text-rose-700 shadow-md active:translate-y-0.5'}`}>Précédent</button>
-              <button onClick={nextVerse} className={`flex-1 py-4 ${buttonClasses[progress.theme]} text-white rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-transform`}>
-                {currentVerseIndex === selectedSurah.verses.length - 1 ? 'Valider ! 🏁' : 'Suivant ➡'}
+              <button 
+                onClick={() => setCurrentVerseIndex(v => v - 1)} 
+                disabled={currentVerseIndex === 0} 
+                className={`flex-1 py-4 rounded-2xl font-black text-lg transition-all ${currentVerseIndex === 0 ? 'bg-gray-200 text-gray-400' : 'bg-white text-rose-700 shadow-md active:translate-y-0.5'}`}
+              >
+                {t('previous')}
+              </button>
+              <button 
+                onClick={nextVerse} 
+                className={`flex-1 py-4 ${buttonClasses[progress.theme]} text-white rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-transform`}
+              >
+                {currentVerseIndex === selectedSurah.verses.length - 1 ? `${t('validate')} ! 🏁` : `${t('next')} ➡`}
               </button>
             </div>
 
@@ -739,22 +743,22 @@ const App: React.FC = () => {
             {!progress.gender ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-4xl">🌸</div>
-                <h3 className="text-2xl font-black text-rose-900">Bienvenue !</h3>
-                <p className="text-lg font-bold text-rose-600/70">Es-tu une fille ou un garçon ?</p>
+                <h3 className="text-2xl font-black text-rose-900">{t('welcome_title')}</h3>
+                <p className="text-lg font-bold text-rose-600/70">{t('select_gender')}</p>
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={() => setProgress(p => ({ ...p, gender: 'girl' }))}
                     className="p-6 bg-pink-50 border-4 border-pink-100 rounded-[2rem] text-4xl hover:scale-105 active:scale-95 transition-all shadow-sm"
                   >
                     🌸
-                    <p className="text-xs font-black text-pink-500 mt-2 uppercase">Fille</p>
+                    <p className="text-xs font-black text-pink-500 mt-2 uppercase">{t('girl')}</p>
                   </button>
                   <button 
                     onClick={() => setProgress(p => ({ ...p, gender: 'boy' }))}
                     className="p-6 bg-blue-50 border-4 border-blue-100 rounded-[2rem] text-4xl hover:scale-105 active:scale-95 transition-all shadow-sm"
                   >
                     🚀
-                    <p className="text-xs font-black text-blue-500 mt-2 uppercase">Garçon</p>
+                    <p className="text-xs font-black text-blue-500 mt-2 uppercase">{t('boy')}</p>
                   </button>
                 </div>
               </div>
@@ -763,11 +767,11 @@ const App: React.FC = () => {
                 <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-4xl">
                   {progress.gender === 'girl' ? '💖' : '🌟'}
                 </div>
-                <h3 className="text-2xl font-black text-rose-900">Super !</h3>
-                <p className="text-lg font-bold text-rose-600/70">Comment t'appelles-tu ?</p>
+                <h3 className="text-2xl font-black text-rose-900">{t('salut')} !</h3>
+                <p className="text-lg font-bold text-rose-600/70">{t('enter_name')}</p>
                 <input 
                   type="text" 
-                  placeholder="Ton prénom..."
+                  placeholder={t('name_placeholder')}
                   autoFocus
                   value={progress.userName || ''}
                   onChange={(e) => setProgress(prev => ({ ...prev, userName: e.target.value }))}
@@ -784,13 +788,13 @@ const App: React.FC = () => {
                   }} 
                   className="w-full py-5 bg-rose-600 text-white rounded-3xl text-xl font-black shadow-lg shadow-rose-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
                 >
-                  C'est parti ! ✨
+                  {t('validate')}
                 </button>
                 <button 
                   onClick={() => setProgress(p => ({ ...p, gender: undefined }))}
                   className="text-xs font-bold text-rose-400 uppercase tracking-widest"
                 >
-                  ⬅ Retour
+                  ⬅ {t('menu.home')}
                 </button>
               </div>
             )}
@@ -815,7 +819,7 @@ const App: React.FC = () => {
               </div>
             )}
             <button onClick={closeCelebration} className={`w-full py-5 rounded-[1.8rem] text-white text-xl font-black shadow-lg active:scale-95 transition-transform ${buttonClasses[progress.theme]}`}>
-              Continuer ! 🚀
+              {t('validate')} ! 🚀
             </button>
           </div>
         </div>
