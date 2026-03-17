@@ -262,10 +262,10 @@ const App: React.FC = () => {
   };
 
   const themeClasses = {
-    emerald: 'bg-[url(/emerald.png)] bg-cover bg-center text-emerald-900',
-    gold: 'bg-[url(/gold.png)] bg-cover bg-center text-amber-900',
-    indigo: 'bg-[url(/indigo.png)] bg-cover bg-center text-indigo-900',
-    rose: 'bg-[url(/rose.png)] bg-cover bg-center text-rose-900',
+    emerald: 'bg-[url(/back1.png)] bg-cover bg-center text-emerald-900',
+    gold: 'bg-[url(/back2.png)] bg-cover bg-center text-amber-900',
+    indigo: 'bg-[url(/back3.png)] bg-cover bg-center text-indigo-900',
+    rose: 'bg-[url(/back4.png)] bg-cover bg-center text-rose-900',
   };
 
   const surahNameTextClasses = {
