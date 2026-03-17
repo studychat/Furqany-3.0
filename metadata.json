@@ -1,0 +1,8 @@
+{
+  "name": "FURQANY test",
+  "description": "Une application interactive pour aider les enfants à mémoriser les petites sourates avec la récitation de Cheikh Mahmoud Ali Al Banna.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}

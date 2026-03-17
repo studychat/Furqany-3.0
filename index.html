@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <title>FURQANY 🌟📖</title>
+    <meta name="description" content="Apprends les sourates avec Lumi l'étoile et la belle voix de Cheikh Mahmoud Ali Al Banna.">
+    
+    <!-- PWA & Mobile Web App Meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FURQANY">
+    <meta name="theme-color" content="#fdf2f8">
+    <link rel="manifest" href="manifest.json">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌟</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Amiri:wght@400;700&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'KFGQPC_Hafs';
+            src: url('https://cdn.jsdelivr.net/gh/alif-type/quran-fonts@master/fonts/kfgqpc-uthman-taha-naskh/KFGQPC%20Uthman%20Taha%20Naskh.ttf') format('truetype');
+            font-display: swap;
+        }
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            background: #f8fafc;
+            overflow: hidden;
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .quran-text {
+            font-family: 'KFGQPC_Hafs', 'Amiri', 'Scheherazade New', serif;
+            line-height: 2.2;
+            text-align: center;
+            direction: rtl;
+            font-feature-settings: "kern" 1, "calt" 1;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            word-spacing: 0.1em;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
